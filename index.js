@@ -23,7 +23,7 @@ const client = new Client({
 
 const PREFIX = '!';
 
-client.once('ready', () => {
+client.once('clientReady', () => {
   console.log(`${client.user.tag} is online!`);
 });
 
@@ -52,7 +52,9 @@ client.on('messageCreate', async (message) => {
       return message.reply('Please provide a message to send.');
     }
 
-    await message.guild.members.fetch();
+    await message.guild.members.fetch({
+      time: 300000
+    });
 
     const members = role.members.filter(member => !member.user.bot);
 
@@ -62,7 +64,13 @@ client.on('messageCreate', async (message) => {
     for (const member of members.values()) {
       try {
         await member.send(`📢 CID SITUATION Announcement\n\n${dmMessage}`);
+
         sent++;
+
+        await new Promise(resolve =>
+          setTimeout(resolve, 2500)
+        );
+
       } catch (error) {
         failed++;
         console.log(`Could not DM ${member.user.tag}`);

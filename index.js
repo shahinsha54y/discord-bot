@@ -37,20 +37,17 @@ const commands = [
     .setName("dm")
     .setDescription("DM all members in a role")
     .addRoleOption(option =>
-      option
-        .setName("role")
+      option.setName("role")
         .setDescription("Select role")
         .setRequired(true)
     )
     .addIntegerOption(option =>
-      option
-        .setName("count")
+      option.setName("count")
         .setDescription("How many times send")
         .setRequired(true)
     )
     .addStringOption(option =>
-      option
-        .setName("message")
+      option.setName("message")
         .setDescription("Message")
         .setRequired(true)
     )
@@ -109,9 +106,7 @@ client.on("interactionCreate", async interaction => {
         for (let i = 0; i < count; i++) {
 
           await member.send({
-            content: `👋 Hello ${member.user.tag}
-
-${msg}`
+            content: `👋 Hello ${member.user.tag}\n\n${msg}`
           });
 
         }

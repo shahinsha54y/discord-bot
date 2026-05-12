@@ -1,6 +1,0 @@
-{
-  "dependencies": {
-    "discord.js": "^14.26.4",
-    "express": "^4.21.2"
-  }
-}

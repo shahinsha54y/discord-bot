@@ -45,11 +45,12 @@ const commands = [
     )
     .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
     .toJSON()
-];
+);
 
 // ================= READY =================
 
-client.once("clientready", async () => {
+// FIXED: clientready → ready
+client.once("ready", async () => {
   console.log(`✅ Logged in as ${client.user.tag}`);
 
   const rest = new REST({ version: "10" }).setToken(process.env.TOKEN);
@@ -79,10 +80,10 @@ client.on("interactionCreate", async interaction => {
 
     await interaction.reply({
       content: `📨 Sending DMs to members with role ${role.name}...`,
-      ephemeral: true
+      flags: 64 // FIXED (ephemeral warning)
     });
 
-    // FETCH ALL MEMBERS
+    // FETCH ALL MEMBERS (online + offline)
     await interaction.guild.members.fetch();
 
     const members = interaction.guild.members.cache.filter(member =>
@@ -99,7 +100,7 @@ client.on("interactionCreate", async interaction => {
         for (let i = 0; i < count; i++) {
 
           await member.send({
-            content: `👋 Hello ${member}
+            content: `👋 Hello ${member.user.tag}
 
 ${msg}`
           });
@@ -125,7 +126,7 @@ ${msg}`
 👥 Total Members: ${members.size}
 ✅ Success: ${success}
 ❌ Failed: ${failed}`,
-      ephemeral: true
+      flags: 64
     });
   }
 });

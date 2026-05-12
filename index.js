@@ -24,23 +24,15 @@ const client = new Client({
 const commands = [
   new SlashCommandBuilder()
     .setName("dm")
-    .setDescription("DM all members in a role")
+    .setDescription("Send DM to role members")
     .addRoleOption(option =>
-      option
-        .setName("role")
+      option.setName("role")
         .setDescription("Select role")
         .setRequired(true)
     )
-    .addIntegerOption(option =>
-      option
-        .setName("count")
-        .setDescription("How many times send")
-        .setRequired(true)
-    )
     .addStringOption(option =>
-      option
-        .setName("message")
-        .setDescription("Message")
+      option.setName("message")
+        .setDescription("Message to send")
         .setRequired(true)
     )
     .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
@@ -66,6 +58,10 @@ client.once("ready", async () => {
   }
 });
 
+// ================= HELPER =================
+
+const delay = ms => new Promise(res => setTimeout(res, ms));
+
 // ================= INTERACTION =================
 
 client.on("interactionCreate", async interaction => {
@@ -74,57 +70,41 @@ client.on("interactionCreate", async interaction => {
   if (interaction.commandName === "dm") {
 
     const role = interaction.options.getRole("role");
-    const count = interaction.options.getInteger("count");
     const msg = interaction.options.getString("message");
 
     await interaction.reply({
-      content: `📨 Sending DMs to members with role ${role.name}...`,
+      content: `📨 Sending DM to role: ${role.name}`,
       ephemeral: true
     });
 
-    // FETCH ALL MEMBERS
     await interaction.guild.members.fetch();
 
-    const members = interaction.guild.members.cache.filter(member =>
-      member.roles.cache.has(role.id) && !member.user.bot
+    const members = interaction.guild.members.cache.filter(
+      m => m.roles.cache.has(role.id) && !m.user.bot
     );
 
     let success = 0;
     let failed = 0;
 
-    for (const [id, member] of members) {
+    for (const member of members.values()) {
 
       try {
-
-        for (let i = 0; i < count; i++) {
-
-          await member.send({
-            content: `👋 Hello ${member}
-
-${msg}`
-          });
-
-        }
-
+        await member.send(`👋 Hello ${member.user.username}\n\n${msg}`);
         success++;
 
         console.log(`✅ Sent DM to ${member.user.tag}`);
 
+        // 🔥 IMPORTANT: prevent rate limit
+        await delay(1500);
+
       } catch (err) {
-
         failed++;
-
         console.log(`❌ Failed DM to ${member.user.tag}`);
       }
     }
 
     await interaction.followUp({
-      content:
-`✅ DM Sending Completed
-
-👥 Total Members: ${members.size}
-✅ Success: ${success}
-❌ Failed: ${failed}`,
+      content: `✅ Completed\n👥 ${members.size}\n✅ ${success}\n❌ ${failed}`,
       ephemeral: true
     });
   }

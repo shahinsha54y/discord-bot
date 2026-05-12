@@ -11,8 +11,6 @@ app.listen(process.env.PORT || 3000, () => {
   console.log("Web server started");
 });
 
-// ===== DISCORD =====
-
 const {
   Client,
   GatewayIntentBits,
@@ -32,41 +30,51 @@ const client = new Client({
   partials: [Partials.Channel]
 });
 
-// ===== COMMAND =====
+// ================= COMMAND =================
 
 const commands = [
   new SlashCommandBuilder()
     .setName("dm")
     .setDescription("DM all members in a role")
     .addRoleOption(option =>
-      option.setName("role").setDescription("Select role").setRequired(true)
+      option.setName("role")
+        .setDescription("Select role")
+        .setRequired(true)
     )
     .addIntegerOption(option =>
-      option.setName("count").setDescription("How many times send").setRequired(true)
+      option.setName("count")
+        .setDescription("How many times send")
+        .setRequired(true)
     )
     .addStringOption(option =>
-      option.setName("message").setDescription("Message").setRequired(true)
+      option.setName("message")
+        .setDescription("Message")
+        .setRequired(true)
     )
     .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
     .toJSON()
-];
+);
 
-// ===== READY =====
+// ================= READY =================
 
 client.once("ready", async () => {
   console.log(`✅ Logged in as ${client.user.tag}`);
 
   const rest = new REST({ version: "10" }).setToken(process.env.TOKEN);
 
-  await rest.put(
-    Routes.applicationCommands(client.user.id),
-    { body: commands }
-  );
+  try {
+    await rest.put(
+      Routes.applicationCommands(client.user.id),
+      { body: commands }
+    );
 
-  console.log("✅ Slash command registered");
+    console.log("✅ Slash commands registered");
+  } catch (err) {
+    console.log(err);
+  }
 });
 
-// ===== INTERACTION =====
+// ================= INTERACTION =================
 
 client.on("interactionCreate", async interaction => {
   if (!interaction.isChatInputCommand()) return;
@@ -78,14 +86,14 @@ client.on("interactionCreate", async interaction => {
     const msg = interaction.options.getString("message");
 
     await interaction.reply({
-      content: `📨 Sending DMs...`,
+      content: `📨 Sending DMs to members with role ${role.name}...`,
       flags: 64
     });
 
     await interaction.guild.members.fetch();
 
-    const members = interaction.guild.members.cache.filter(
-      m => m.roles.cache.has(role.id) && !m.user.bot
+    const members = interaction.guild.members.cache.filter(member =>
+      member.roles.cache.has(role.id) && !member.user.bot
     );
 
     let success = 0;
@@ -96,22 +104,27 @@ client.on("interactionCreate", async interaction => {
       try {
 
         for (let i = 0; i < count; i++) {
-          await member.send(`👋 Hello ${member.user.tag}\n\n${msg}`);
+
+          await member.send({
+            content: `👋 Hello ${member.user.tag}\n\n${msg}`
+          });
+
         }
 
         success++;
-        console.log(`✅ Sent to ${member.user.tag}`);
+        console.log(`✅ Sent DM to ${member.user.tag}`);
 
       } catch (err) {
+
         failed++;
-        console.log(`❌ Failed ${member.user.tag}`);
+        console.log(`❌ Failed DM to ${member.user.tag}`);
       }
     }
 
     await interaction.followUp({
-      content: `✅ Done
+      content: `✅ DM Sending Completed
 
-👥 Total: ${members.size}
+👥 Total Members: ${members.size}
 ✅ Success: ${success}
 ❌ Failed: ${failed}`,
       flags: 64
@@ -119,6 +132,6 @@ client.on("interactionCreate", async interaction => {
   }
 });
 
-// ===== LOGIN =====
+// ================= LOGIN =================
 
 client.login(process.env.TOKEN);

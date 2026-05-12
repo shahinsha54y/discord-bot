@@ -11,6 +11,8 @@ app.listen(process.env.PORT || 3000, () => {
   console.log("Web server started");
 });
 
+// ===== DISCORD =====
+
 const {
   Client,
   GatewayIntentBits,
@@ -30,7 +32,7 @@ const client = new Client({
   partials: [Partials.Channel]
 });
 
-// ================= COMMAND =================
+// ===== COMMAND =====
 
 const commands = [
   new SlashCommandBuilder()
@@ -49,26 +51,22 @@ const commands = [
     .toJSON()
 ];
 
-// ================= READY =================
+// ===== READY =====
 
 client.once("ready", async () => {
   console.log(`✅ Logged in as ${client.user.tag}`);
 
   const rest = new REST({ version: "10" }).setToken(process.env.TOKEN);
 
-  try {
-    await rest.put(
-      Routes.applicationCommands(client.user.id),
-      { body: commands }
-    );
+  await rest.put(
+    Routes.applicationCommands(client.user.id),
+    { body: commands }
+  );
 
-    console.log("✅ Slash commands registered");
-  } catch (err) {
-    console.log(err);
-  }
+  console.log("✅ Slash command registered");
 });
 
-// ================= INTERACTION =================
+// ===== INTERACTION =====
 
 client.on("interactionCreate", async interaction => {
   if (!interaction.isChatInputCommand()) return;
@@ -80,14 +78,14 @@ client.on("interactionCreate", async interaction => {
     const msg = interaction.options.getString("message");
 
     await interaction.reply({
-      content: `📨 Sending DMs to members with role ${role.name}...`,
+      content: `📨 Sending DMs...`,
       flags: 64
     });
 
     await interaction.guild.members.fetch();
 
-    const members = interaction.guild.members.cache.filter(member =>
-      member.roles.cache.has(role.id) && !member.user.bot
+    const members = interaction.guild.members.cache.filter(
+      m => m.roles.cache.has(role.id) && !m.user.bot
     );
 
     let success = 0;
@@ -98,27 +96,22 @@ client.on("interactionCreate", async interaction => {
       try {
 
         for (let i = 0; i < count; i++) {
-
-          await member.send({
-            content: `👋 Hello ${member.user.tag}\n\n${msg}`
-          });
-
+          await member.send(`👋 Hello ${member.user.tag}\n\n${msg}`);
         }
 
         success++;
-        console.log(`✅ Sent DM to ${member.user.tag}`);
+        console.log(`✅ Sent to ${member.user.tag}`);
 
       } catch (err) {
-
         failed++;
-        console.log(`❌ Failed DM to ${member.user.tag}`);
+        console.log(`❌ Failed ${member.user.tag}`);
       }
     }
 
     await interaction.followUp({
-      content: `✅ DM Sending Completed
+      content: `✅ Done
 
-👥 Total Members: ${members.size}
+👥 Total: ${members.size}
 ✅ Success: ${success}
 ❌ Failed: ${failed}`,
       flags: 64
@@ -126,6 +119,6 @@ client.on("interactionCreate", async interaction => {
   }
 });
 
-// ================= LOGIN =================
+// ===== LOGIN =====
 
 client.login(process.env.TOKEN);

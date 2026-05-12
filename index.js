@@ -1,16 +1,5 @@
 require("dotenv").config();
 
-const express = require("express");
-const app = express();
-
-app.get("/", (req, res) => {
-  res.send("Bot is running");
-});
-
-app.listen(process.env.PORT || 3000, () => {
-  console.log("Web server started");
-});
-
 const {
   Client,
   GatewayIntentBits,
@@ -37,23 +26,26 @@ const commands = [
     .setName("dm")
     .setDescription("DM all members in a role")
     .addRoleOption(option =>
-      option.setName("role")
+      option
+        .setName("role")
         .setDescription("Select role")
         .setRequired(true)
     )
     .addIntegerOption(option =>
-      option.setName("count")
+      option
+        .setName("count")
         .setDescription("How many times send")
         .setRequired(true)
     )
     .addStringOption(option =>
-      option.setName("message")
+      option
+        .setName("message")
         .setDescription("Message")
         .setRequired(true)
     )
     .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
     .toJSON()
-);
+];
 
 // ================= READY =================
 
@@ -87,9 +79,10 @@ client.on("interactionCreate", async interaction => {
 
     await interaction.reply({
       content: `📨 Sending DMs to members with role ${role.name}...`,
-      flags: 64
+      ephemeral: true
     });
 
+    // FETCH ALL MEMBERS
     await interaction.guild.members.fetch();
 
     const members = interaction.guild.members.cache.filter(member =>
@@ -106,28 +99,33 @@ client.on("interactionCreate", async interaction => {
         for (let i = 0; i < count; i++) {
 
           await member.send({
-            content: `👋 Hello ${member.user.tag}\n\n${msg}`
+            content: `👋 Hello ${member}
+
+${msg}`
           });
 
         }
 
         success++;
+
         console.log(`✅ Sent DM to ${member.user.tag}`);
 
       } catch (err) {
 
         failed++;
+
         console.log(`❌ Failed DM to ${member.user.tag}`);
       }
     }
 
     await interaction.followUp({
-      content: `✅ DM Sending Completed
+      content:
+`✅ DM Sending Completed
 
 👥 Total Members: ${members.size}
 ✅ Success: ${success}
 ❌ Failed: ${failed}`,
-      flags: 64
+      ephemeral: true
     });
   }
 });

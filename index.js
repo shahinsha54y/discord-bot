@@ -37,23 +37,17 @@ const commands = [
     .setName("dm")
     .setDescription("DM all members in a role")
     .addRoleOption(option =>
-      option.setName("role")
-        .setDescription("Select role")
-        .setRequired(true)
+      option.setName("role").setDescription("Select role").setRequired(true)
     )
     .addIntegerOption(option =>
-      option.setName("count")
-        .setDescription("How many times send")
-        .setRequired(true)
+      option.setName("count").setDescription("How many times send").setRequired(true)
     )
     .addStringOption(option =>
-      option.setName("message")
-        .setDescription("Message")
-        .setRequired(true)
+      option.setName("message").setDescription("Message").setRequired(true)
     )
     .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
     .toJSON()
-);
+];
 
 // ================= READY =================
 

@@ -1,5 +1,16 @@
 require("dotenv").config();
 
+const express = require("express");
+const app = express();
+
+app.get("/", (req, res) => {
+  res.send("Bot is running");
+});
+
+app.listen(process.env.PORT || 3000, () => {
+  console.log("Web server started");
+});
+
 const {
   Client,
   GatewayIntentBits,
@@ -49,7 +60,6 @@ const commands = [
 
 // ================= READY =================
 
-// FIXED: clientready → ready
 client.once("ready", async () => {
   console.log(`✅ Logged in as ${client.user.tag}`);
 
@@ -80,10 +90,9 @@ client.on("interactionCreate", async interaction => {
 
     await interaction.reply({
       content: `📨 Sending DMs to members with role ${role.name}...`,
-      flags: 64 // FIXED (ephemeral warning)
+      flags: 64
     });
 
-    // FETCH ALL MEMBERS (online + offline)
     await interaction.guild.members.fetch();
 
     const members = interaction.guild.members.cache.filter(member =>
@@ -108,20 +117,17 @@ ${msg}`
         }
 
         success++;
-
         console.log(`✅ Sent DM to ${member.user.tag}`);
 
       } catch (err) {
 
         failed++;
-
         console.log(`❌ Failed DM to ${member.user.tag}`);
       }
     }
 
     await interaction.followUp({
-      content:
-`✅ DM Sending Completed
+      content: `✅ DM Sending Completed
 
 👥 Total Members: ${members.size}
 ✅ Success: ${success}

@@ -13,7 +13,8 @@ const {
 } = require("discord.js");
 
 const {
-  joinVoiceChannel
+  joinVoiceChannel,
+  getVoiceConnection
 } = require("@discordjs/voice");
 
 // ================= TOKEN CHECK =================
@@ -29,13 +30,6 @@ const app = express();
 
 app.get("/", (req, res) => {
   res.status(200).send("✅ Bot is running");
-});
-
-app.get("/health", (req, res) => {
-  res.json({
-    status: "online",
-    bot: client?.user?.tag || "starting"
-  });
 });
 
 app.listen(process.env.PORT || 3000, () => {
@@ -62,17 +56,18 @@ const commands = [
     .setName("dm")
     .setDescription("Send DM to role members")
     .addRoleOption(option =>
-      option
-        .setName("role")
-        .setDescription("Select role")
-        .setRequired(true)
+      option.setName("role").setDescription("Select role").setRequired(true)
     )
     .addStringOption(option =>
-      option
-        .setName("message")
-        .setDescription("Message to send")
-        .setRequired(true)
+      option.setName("message").setDescription("Message to send").setRequired(true)
     )
+    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
+    .toJSON(),
+
+  // 🔥 NEW: FLASH JOIN COMMAND
+  new SlashCommandBuilder()
+    .setName("flashjoin")
+    .setDescription("Bot joins YOUR current voice channel")
     .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
     .toJSON()
 ];
@@ -91,34 +86,10 @@ client.once("ready", async () => {
     );
 
     console.log("✅ Slash commands registered");
-
-    // ================= AUTO VC JOIN =================
-
-    const guild = client.guilds.cache.first();
-
-    if (guild) {
-      const channel = guild.channels.cache.find(c => c.type === 2);
-
-      if (channel) {
-        joinVoiceChannel({
-          channelId: channel.id,
-          guildId: guild.id,
-          adapterCreator: guild.voiceAdapterCreator,
-          selfDeaf: false
-        });
-
-        console.log(`🔊 Joined VC: ${channel.name}`);
-      }
-    }
-
   } catch (err) {
     console.error("❌ Slash command registration failed:", err);
   }
 });
-
-// ================= HELPER =================
-
-const delay = ms => new Promise(res => setTimeout(res, ms));
 
 // ================= INTERACTION =================
 
@@ -126,6 +97,7 @@ client.on("interactionCreate", async interaction => {
   try {
     if (!interaction.isChatInputCommand()) return;
 
+    // ================= DM COMMAND =================
     if (interaction.commandName === "dm") {
       const role = interaction.options.getRole("role");
       const msg = interaction.options.getString("message");
@@ -156,51 +128,52 @@ ${msg}
           });
 
           success++;
-          console.log(`✅ Sent DM to ${member.user.tag}`);
-
-          await delay(2000);
         } catch (err) {
           failed++;
-          console.log(`❌ Failed DM to ${member.user.tag}`);
         }
       }
 
       await interaction.followUp({
-        content: `✅ DM Sending Completed
+        content: `✅ DM Completed
 
-👥 Total Users: ${members.size}
+👥 Total: ${members.size}
 ✅ Success: ${success}
 ❌ Failed: ${failed}`,
         ephemeral: true
       });
     }
+
+    // ================= FLASH JOIN =================
+    if (interaction.commandName === "flashjoin") {
+      const memberVoice = interaction.member.voice.channel;
+
+      if (!memberVoice) {
+        return interaction.reply({
+          content: "❌ നീ ഇപ്പോൾ voice channel-ൽ ഇല്ല",
+          ephemeral: true
+        });
+      }
+
+      // disconnect old connection if exists
+      const oldConnection = getVoiceConnection(interaction.guild.id);
+      if (oldConnection) oldConnection.destroy();
+
+      joinVoiceChannel({
+        channelId: memberVoice.id,
+        guildId: interaction.guild.id,
+        adapterCreator: interaction.guild.voiceAdapterCreator,
+        selfDeaf: false
+      });
+
+      return interaction.reply({
+        content: `🔊 Joined your VC: ${memberVoice.name}`,
+        ephemeral: true
+      });
+    }
+
   } catch (err) {
     console.error("❌ Interaction Error:", err);
   }
-});
-
-// ================= ERROR HANDLING =================
-
-process.on("unhandledRejection", error => {
-  console.error("❌ Unhandled Rejection:", error);
-});
-
-process.on("uncaughtException", error => {
-  console.error("❌ Uncaught Exception:", error);
-});
-
-// ================= GRACEFUL SHUTDOWN =================
-
-process.on("SIGINT", () => {
-  console.log("🛑 Bot shutting down...");
-  client.destroy();
-  process.exit(0);
-});
-
-process.on("SIGTERM", () => {
-  console.log("🛑 Railway stopped the container");
-  client.destroy();
-  process.exit(0);
 });
 
 // ================= LOGIN =================

@@ -45,7 +45,7 @@ const client = new Client({
     GatewayIntentBits.GuildMessages,
     GatewayIntentBits.GuildVoiceStates,
     GatewayIntentBits.DirectMessages,
-    GatewayIntentBits.MessageContent // 🔥 REQUIRED
+    GatewayIntentBits.MessageContent // ⚠️ MUST BE ENABLED IN DEV PORTAL ALSO
   ],
   partials: [Partials.Channel]
 });
@@ -88,16 +88,15 @@ client.once("ready", async () => {
   }
 });
 
-// ================= DEBUG MESSAGE (IMPORTANT) =================
+// ================= MESSAGE COMMAND (!join) =================
 
 client.on("messageCreate", async message => {
   try {
     if (message.author.bot) return;
 
-    // 🔍 DEBUG (you can remove later)
-    console.log("📩 MESSAGE:", message.content);
+    // 🔍 DEBUG (DON'T REMOVE UNTIL WORKS)
+    console.log("📩 MESSAGE RECEIVED:", message.content);
 
-    // ================= !JOIN COMMAND =================
     if (message.content.trim() === "!join") {
 
       const memberVoice = message.member?.voice?.channel;
@@ -124,7 +123,7 @@ client.on("messageCreate", async message => {
   }
 });
 
-// ================= INTERACTION (DM ONLY) =================
+// ================= INTERACTION =================
 
 client.on("interactionCreate", async interaction => {
   try {

@@ -71,7 +71,7 @@ const commands = [
     .toJSON()
 ];
 
-// ================= READY =================
+// ================= READY (FIXED GUILD COMMANDS) =================
 
 client.once("ready", async () => {
   console.log(`✅ Logged in as ${client.user.tag}`);
@@ -79,7 +79,6 @@ client.once("ready", async () => {
   const rest = new REST({ version: "10" }).setToken(process.env.TOKEN);
 
   try {
-    // 🔥 GET FIRST SERVER
     const guild = client.guilds.cache.first();
 
     if (!guild) {
@@ -87,7 +86,7 @@ client.once("ready", async () => {
       return;
     }
 
-    // ⚡ INSTANT GUILD COMMANDS (IMPORTANT FIX)
+    // ⚡ INSTANT COMMAND REGISTRATION FIX
     await rest.put(
       Routes.applicationGuildCommands(client.user.id, guild.id),
       { body: commands }
@@ -154,7 +153,9 @@ ${msg}
 
     // ================= FLASH JOIN =================
     if (interaction.commandName === "flashjoin") {
-      const memberVoice = interaction.member.voice.channel;
+
+      const member = await interaction.guild.members.fetch(interaction.user.id);
+      const memberVoice = member.voice.channel;
 
       if (!memberVoice) {
         return interaction.reply({

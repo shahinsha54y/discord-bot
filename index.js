@@ -61,37 +61,30 @@ const commands = [
   new SlashCommandBuilder()
     .setName("dm")
     .setDescription("Send DM to role members")
-
     .addRoleOption(option =>
       option
         .setName("role")
         .setDescription("Select role")
         .setRequired(true)
     )
-
     .addStringOption(option =>
       option
         .setName("message")
         .setDescription("Message to send")
         .setRequired(true)
     )
-
     .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
-
     .toJSON()
 ];
 
 // ================= READY =================
 
-client.once("clientReady", async () =>
-
+client.once("ready", async () => {
   console.log(`✅ Logged in as ${client.user.tag}`);
 
-  const rest = new REST({ version: "10" })
-    .setToken(process.env.TOKEN);
+  const rest = new REST({ version: "10" }).setToken(process.env.TOKEN);
 
   try {
-
     await rest.put(
       Routes.applicationCommands(client.user.id),
       { body: commands }
@@ -104,13 +97,9 @@ client.once("clientReady", async () =>
     const guild = client.guilds.cache.first();
 
     if (guild) {
-
-      const channel = guild.channels.cache.find(
-        c => c.type === 2
-      );
+      const channel = guild.channels.cache.find(c => c.type === 2);
 
       if (channel) {
-
         joinVoiceChannel({
           channelId: channel.id,
           guildId: guild.id,
@@ -123,9 +112,7 @@ client.once("clientReady", async () =>
     }
 
   } catch (err) {
-
     console.error("❌ Slash command registration failed:", err);
-
   }
 });
 
@@ -136,39 +123,31 @@ const delay = ms => new Promise(res => setTimeout(res, ms));
 // ================= INTERACTION =================
 
 client.on("interactionCreate", async interaction => {
-
   try {
-
     if (!interaction.isChatInputCommand()) return;
 
     if (interaction.commandName === "dm") {
-
       const role = interaction.options.getRole("role");
       const msg = interaction.options.getString("message");
 
       await interaction.reply({
         content: `📨 Sending DMs to role: ${role.name}`,
-        flags: 64
+        ephemeral: true
       });
 
       await interaction.guild.members.fetch();
 
       const members = interaction.guild.members.cache.filter(
-        m =>
-          m.roles.cache.has(role.id) &&
-          !m.user.bot
+        m => m.roles.cache.has(role.id) && !m.user.bot
       );
 
       let success = 0;
       let failed = 0;
 
       for (const member of members.values()) {
-
         try {
-
           await member.send({
-            content:
-`👋 Hello ${member.user.username},
+            content: `👋 Hello ${member.user.username},
 
 ${msg}
 
@@ -177,35 +156,26 @@ ${msg}
           });
 
           success++;
-
           console.log(`✅ Sent DM to ${member.user.tag}`);
 
           await delay(2000);
-
         } catch (err) {
-
           failed++;
-
           console.log(`❌ Failed DM to ${member.user.tag}`);
-
         }
       }
 
       await interaction.followUp({
-        content:
-`✅ DM Sending Completed
+        content: `✅ DM Sending Completed
 
 👥 Total Users: ${members.size}
 ✅ Success: ${success}
 ❌ Failed: ${failed}`,
-        flags: 64
+        ephemeral: true
       });
     }
-
   } catch (err) {
-
     console.error("❌ Interaction Error:", err);
-
   }
 });
 

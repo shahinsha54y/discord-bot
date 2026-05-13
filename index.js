@@ -83,7 +83,7 @@ const commands = [
 
 // ================= READY =================
 
-client.once("clientReady", async () => {
+client.once("clientReady", async () =>
 
   console.log(`✅ Logged in as ${client.user.tag}`);
 

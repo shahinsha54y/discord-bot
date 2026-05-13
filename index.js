@@ -44,7 +44,8 @@ const client = new Client({
     GatewayIntentBits.GuildMembers,
     GatewayIntentBits.GuildMessages,
     GatewayIntentBits.GuildVoiceStates,
-    GatewayIntentBits.DirectMessages
+    GatewayIntentBits.DirectMessages,
+    GatewayIntentBits.MessageContent   // 🔥 REQUIRED FOR !join
   ],
   partials: [Partials.Channel]
 });
@@ -62,16 +63,10 @@ const commands = [
       option.setName("message").setDescription("Message to send").setRequired(true)
     )
     .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
-    .toJSON(),
-
-  new SlashCommandBuilder()
-    .setName("flashjoin")
-    .setDescription("Bot joins YOUR current voice channel")
-    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
     .toJSON()
 ];
 
-// ================= READY (FIXED GUILD COMMANDS) =================
+// ================= READY =================
 
 client.once("ready", async () => {
   console.log(`✅ Logged in as ${client.user.tag}`);
@@ -86,26 +81,57 @@ client.once("ready", async () => {
       return;
     }
 
-    // ⚡ INSTANT COMMAND REGISTRATION FIX
     await rest.put(
       Routes.applicationGuildCommands(client.user.id, guild.id),
       { body: commands }
     );
 
-    console.log("⚡ Slash commands registered (INSTANT MODE)");
+    console.log("⚡ Slash commands registered");
 
   } catch (err) {
     console.error("❌ Slash command registration failed:", err);
   }
 });
 
-// ================= INTERACTION =================
+// ================= PREFIX COMMAND (!join) =================
+
+client.on("messageCreate", async message => {
+  try {
+    if (message.author.bot) return;
+
+    // 🔥 NEW JOIN COMMAND
+    if (message.content === "!join") {
+
+      const memberVoice = message.member.voice.channel;
+
+      if (!memberVoice) {
+        return message.reply("❌ നീ ഇപ്പോൾ voice channel-ൽ ഇല്ല");
+      }
+
+      const oldConnection = getVoiceConnection(message.guild.id);
+      if (oldConnection) oldConnection.destroy();
+
+      joinVoiceChannel({
+        channelId: memberVoice.id,
+        guildId: message.guild.id,
+        adapterCreator: message.guild.voiceAdapterCreator,
+        selfDeaf: false
+      });
+
+      return message.reply(`🔊 Joined your VC: ${memberVoice.name}`);
+    }
+
+  } catch (err) {
+    console.error("❌ Message Command Error:", err);
+  }
+});
+
+// ================= INTERACTION (DM ONLY) =================
 
 client.on("interactionCreate", async interaction => {
   try {
     if (!interaction.isChatInputCommand()) return;
 
-    // ================= DM =================
     if (interaction.commandName === "dm") {
       const role = interaction.options.getRole("role");
       const msg = interaction.options.getString("message");
@@ -150,36 +176,6 @@ ${msg}
         ephemeral: true
       });
     }
-
-    // ================= FLASH JOIN =================
-    if (interaction.commandName === "flashjoin") {
-
-      const member = await interaction.guild.members.fetch(interaction.user.id);
-      const memberVoice = member.voice.channel;
-
-      if (!memberVoice) {
-        return interaction.reply({
-          content: "❌ നീ ഇപ്പോൾ voice channel-ൽ ഇല്ല",
-          ephemeral: true
-        });
-      }
-
-      const oldConnection = getVoiceConnection(interaction.guild.id);
-      if (oldConnection) oldConnection.destroy();
-
-      joinVoiceChannel({
-        channelId: memberVoice.id,
-        guildId: interaction.guild.id,
-        adapterCreator: interaction.guild.voiceAdapterCreator,
-        selfDeaf: false
-      });
-
-      return interaction.reply({
-        content: `🔊 Joined your VC: ${memberVoice.name}`,
-        ephemeral: true
-      });
-    }
-
   } catch (err) {
     console.error("❌ Interaction Error:", err);
   }

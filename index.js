@@ -64,7 +64,6 @@ const commands = [
     .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
     .toJSON(),
 
-  // 🔥 NEW: FLASH JOIN COMMAND
   new SlashCommandBuilder()
     .setName("flashjoin")
     .setDescription("Bot joins YOUR current voice channel")
@@ -80,12 +79,22 @@ client.once("ready", async () => {
   const rest = new REST({ version: "10" }).setToken(process.env.TOKEN);
 
   try {
+    // 🔥 GET FIRST SERVER
+    const guild = client.guilds.cache.first();
+
+    if (!guild) {
+      console.log("❌ No guild found");
+      return;
+    }
+
+    // ⚡ INSTANT GUILD COMMANDS (IMPORTANT FIX)
     await rest.put(
-      Routes.applicationCommands(client.user.id),
+      Routes.applicationGuildCommands(client.user.id, guild.id),
       { body: commands }
     );
 
-    console.log("✅ Slash commands registered");
+    console.log("⚡ Slash commands registered (INSTANT MODE)");
+
   } catch (err) {
     console.error("❌ Slash command registration failed:", err);
   }
@@ -97,7 +106,7 @@ client.on("interactionCreate", async interaction => {
   try {
     if (!interaction.isChatInputCommand()) return;
 
-    // ================= DM COMMAND =================
+    // ================= DM =================
     if (interaction.commandName === "dm") {
       const role = interaction.options.getRole("role");
       const msg = interaction.options.getString("message");
@@ -128,7 +137,7 @@ ${msg}
           });
 
           success++;
-        } catch (err) {
+        } catch {
           failed++;
         }
       }
@@ -154,7 +163,6 @@ ${msg}
         });
       }
 
-      // disconnect old connection if exists
       const oldConnection = getVoiceConnection(interaction.guild.id);
       if (oldConnection) oldConnection.destroy();
 

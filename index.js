@@ -1,7 +1,5 @@
 require("dotenv").config();
 
-const express = require("express");
-
 const {
   Client,
   GatewayIntentBits,
@@ -12,55 +10,38 @@ const {
   PermissionFlagsBits
 } = require("discord.js");
 
-const {
-  joinVoiceChannel,
-  getVoiceConnection
-} = require("@discordjs/voice");
-
-// ================= TOKEN CHECK =================
-
-if (!process.env.TOKEN) {
-  console.error("❌ TOKEN is missing in Railway Variables");
-  process.exit(1);
-}
-
-// ================= KEEP ALIVE =================
-
-const app = express();
-
-app.get("/", (req, res) => {
-  res.status(200).send("✅ Bot is running");
-});
-
-app.listen(process.env.PORT || 3000, () => {
-  console.log("🌍 Web server running");
-});
-
-// ================= DISCORD CLIENT =================
-
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
     GatewayIntentBits.GuildMembers,
-    GatewayIntentBits.GuildMessages,
-    GatewayIntentBits.GuildVoiceStates,
-    GatewayIntentBits.DirectMessages,
-    GatewayIntentBits.MessageContent // ⚠️ MUST BE ENABLED IN DEV PORTAL ALSO
+    GatewayIntentBits.DirectMessages
   ],
   partials: [Partials.Channel]
 });
 
-// ================= COMMANDS =================
+// ================= COMMAND =================
 
 const commands = [
   new SlashCommandBuilder()
     .setName("dm")
-    .setDescription("Send DM to role members")
+    .setDescription("DM all members in a role")
     .addRoleOption(option =>
-      option.setName("role").setDescription("Select role").setRequired(true)
+      option
+        .setName("role")
+        .setDescription("Select role")
+        .setRequired(true)
+    )
+    .addIntegerOption(option =>
+      option
+        .setName("count")
+        .setDescription("How many times send")
+        .setRequired(true)
     )
     .addStringOption(option =>
-      option.setName("message").setDescription("Message to send").setRequired(true)
+      option
+        .setName("message")
+        .setDescription("Message")
+        .setRequired(true)
     )
     .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
     .toJSON()
@@ -74,107 +55,78 @@ client.once("ready", async () => {
   const rest = new REST({ version: "10" }).setToken(process.env.TOKEN);
 
   try {
-    const guild = client.guilds.cache.first();
-    if (!guild) return console.log("❌ No guild found");
-
     await rest.put(
-      Routes.applicationGuildCommands(client.user.id, guild.id),
+      Routes.applicationCommands(client.user.id),
       { body: commands }
     );
 
-    console.log("⚡ Slash commands registered");
+    console.log("✅ Slash commands registered");
   } catch (err) {
-    console.error("❌ Slash command error:", err);
-  }
-});
-
-// ================= MESSAGE COMMAND (!join) =================
-
-client.on("messageCreate", async message => {
-  try {
-    if (message.author.bot) return;
-
-    // 🔍 DEBUG (DON'T REMOVE UNTIL WORKS)
-    console.log("📩 MESSAGE RECEIVED:", message.content);
-
-    if (message.content.trim() === "!join") {
-
-      const memberVoice = message.member?.voice?.channel;
-
-      if (!memberVoice) {
-        return message.reply("❌ നീ ഇപ്പോൾ voice channel-ൽ ഇല്ല");
-      }
-
-      const oldConnection = getVoiceConnection(message.guild.id);
-      if (oldConnection) oldConnection.destroy();
-
-      joinVoiceChannel({
-        channelId: memberVoice.id,
-        guildId: message.guild.id,
-        adapterCreator: message.guild.voiceAdapterCreator,
-        selfDeaf: false
-      });
-
-      return message.reply(`🔊 Joined your VC: ${memberVoice.name}`);
-    }
-
-  } catch (err) {
-    console.error("❌ !join Error:", err);
+    console.log(err);
   }
 });
 
 // ================= INTERACTION =================
 
 client.on("interactionCreate", async interaction => {
-  try {
-    if (!interaction.isChatInputCommand()) return;
+  if (!interaction.isChatInputCommand()) return;
 
-    if (interaction.commandName === "dm") {
-      const role = interaction.options.getRole("role");
-      const msg = interaction.options.getString("message");
+  if (interaction.commandName === "dm") {
 
-      await interaction.reply({
-        content: `📨 Sending DMs to role: ${role.name}`,
-        ephemeral: true
-      });
+    const role = interaction.options.getRole("role");
+    const count = interaction.options.getInteger("count");
+    const msg = interaction.options.getString("message");
 
-      await interaction.guild.members.fetch();
+    await interaction.reply({
+      content: `📨 Sending DMs to members with role ${role.name}...`,
+      ephemeral: true
+    });
 
-      const members = interaction.guild.members.cache.filter(
-        m => m.roles.cache.has(role.id) && !m.user.bot
-      );
+    // FETCH ALL MEMBERS
+    await interaction.guild.members.fetch();
 
-      let success = 0;
-      let failed = 0;
+    const members = interaction.guild.members.cache.filter(member =>
+      member.roles.cache.has(role.id) && !member.user.bot
+    );
 
-      for (const member of members.values()) {
-        try {
+    let success = 0;
+    let failed = 0;
+
+    for (const [id, member] of members) {
+
+      try {
+
+        for (let i = 0; i < count; i++) {
+
           await member.send({
-            content: `👋 Hello ${member.user.username},
+            content: `👋 Hello ${member}
 
-${msg}
-
-━━━━━━━━━━━━━━━
-🤖 Sent via CID Alert Bot`
+${msg}`
           });
 
-          success++;
-        } catch {
-          failed++;
         }
+
+        success++;
+
+        console.log(`✅ Sent DM to ${member.user.tag}`);
+
+      } catch (err) {
+
+        failed++;
+
+        console.log(`❌ Failed DM to ${member.user.tag}`);
       }
+    }
 
-      await interaction.followUp({
-        content: `✅ DM Completed
+    await interaction.followUp({
+      content:
+`✅ DM Sending Completed
 
-👥 Total: ${members.size}
+👥 Total Members: ${members.size}
 ✅ Success: ${success}
 ❌ Failed: ${failed}`,
-        ephemeral: true
-      });
-    }
-  } catch (err) {
-    console.error("❌ Interaction Error:", err);
+      ephemeral: true
+    });
   }
 });
 

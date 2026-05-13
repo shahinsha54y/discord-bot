@@ -45,7 +45,7 @@ const client = new Client({
     GatewayIntentBits.GuildMessages,
     GatewayIntentBits.GuildVoiceStates,
     GatewayIntentBits.DirectMessages,
-    GatewayIntentBits.MessageContent   // 🔥 REQUIRED FOR !join
+    GatewayIntentBits.MessageContent // 🔥 REQUIRED
   ],
   partials: [Partials.Channel]
 });
@@ -75,11 +75,7 @@ client.once("ready", async () => {
 
   try {
     const guild = client.guilds.cache.first();
-
-    if (!guild) {
-      console.log("❌ No guild found");
-      return;
-    }
+    if (!guild) return console.log("❌ No guild found");
 
     await rest.put(
       Routes.applicationGuildCommands(client.user.id, guild.id),
@@ -87,22 +83,24 @@ client.once("ready", async () => {
     );
 
     console.log("⚡ Slash commands registered");
-
   } catch (err) {
-    console.error("❌ Slash command registration failed:", err);
+    console.error("❌ Slash command error:", err);
   }
 });
 
-// ================= PREFIX COMMAND (!join) =================
+// ================= DEBUG MESSAGE (IMPORTANT) =================
 
 client.on("messageCreate", async message => {
   try {
     if (message.author.bot) return;
 
-    // 🔥 NEW JOIN COMMAND
-    if (message.content === "!join") {
+    // 🔍 DEBUG (you can remove later)
+    console.log("📩 MESSAGE:", message.content);
 
-      const memberVoice = message.member.voice.channel;
+    // ================= !JOIN COMMAND =================
+    if (message.content.trim() === "!join") {
+
+      const memberVoice = message.member?.voice?.channel;
 
       if (!memberVoice) {
         return message.reply("❌ നീ ഇപ്പോൾ voice channel-ൽ ഇല്ല");
@@ -122,7 +120,7 @@ client.on("messageCreate", async message => {
     }
 
   } catch (err) {
-    console.error("❌ Message Command Error:", err);
+    console.error("❌ !join Error:", err);
   }
 });
 

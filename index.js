@@ -12,6 +12,10 @@ const {
   PermissionFlagsBits
 } = require("discord.js");
 
+const {
+  joinVoiceChannel
+} = require("@discordjs/voice");
+
 // ================= TOKEN CHECK =================
 
 if (!process.env.TOKEN) {
@@ -45,6 +49,7 @@ const client = new Client({
     GatewayIntentBits.Guilds,
     GatewayIntentBits.GuildMembers,
     GatewayIntentBits.GuildMessages,
+    GatewayIntentBits.GuildVoiceStates,
     GatewayIntentBits.DirectMessages
   ],
   partials: [Partials.Channel]
@@ -93,6 +98,29 @@ client.once("clientReady", async () => {
     );
 
     console.log("✅ Slash commands registered");
+
+    // ================= AUTO VC JOIN =================
+
+    const guild = client.guilds.cache.first();
+
+    if (guild) {
+
+      const channel = guild.channels.cache.find(
+        c => c.type === 2
+      );
+
+      if (channel) {
+
+        joinVoiceChannel({
+          channelId: channel.id,
+          guildId: guild.id,
+          adapterCreator: guild.voiceAdapterCreator,
+          selfDeaf: false
+        });
+
+        console.log(`🔊 Joined VC: ${channel.name}`);
+      }
+    }
 
   } catch (err) {
 
@@ -152,7 +180,6 @@ ${msg}
 
           console.log(`✅ Sent DM to ${member.user.tag}`);
 
-          // Prevent Discord rate-limit
           await delay(2000);
 
         } catch (err) {

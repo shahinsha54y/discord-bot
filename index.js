@@ -12,12 +12,26 @@ const {
   PermissionFlagsBits
 } = require("discord.js");
 
+// ================= TOKEN CHECK =================
+
+if (!process.env.TOKEN) {
+  console.error("❌ TOKEN is missing in Railway Variables");
+  process.exit(1);
+}
+
 // ================= KEEP ALIVE =================
 
 const app = express();
 
 app.get("/", (req, res) => {
-  res.send("Bot is running ✅");
+  res.status(200).send("✅ Bot is running");
+});
+
+app.get("/health", (req, res) => {
+  res.json({
+    status: "online",
+    bot: client?.user?.tag || "starting"
+  });
 });
 
 app.listen(process.env.PORT || 3000, () => {
@@ -30,6 +44,7 @@ const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
     GatewayIntentBits.GuildMembers,
+    GatewayIntentBits.GuildMessages,
     GatewayIntentBits.DirectMessages
   ],
   partials: [Partials.Channel]
@@ -41,19 +56,23 @@ const commands = [
   new SlashCommandBuilder()
     .setName("dm")
     .setDescription("Send DM to role members")
+
     .addRoleOption(option =>
       option
         .setName("role")
         .setDescription("Select role")
         .setRequired(true)
     )
+
     .addStringOption(option =>
       option
         .setName("message")
         .setDescription("Message to send")
         .setRequired(true)
     )
+
     .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
+
     .toJSON()
 ];
 
@@ -63,7 +82,8 @@ client.once("clientReady", async () => {
 
   console.log(`✅ Logged in as ${client.user.tag}`);
 
-  const rest = new REST({ version: "10" }).setToken(process.env.TOKEN);
+  const rest = new REST({ version: "10" })
+    .setToken(process.env.TOKEN);
 
   try {
 
@@ -76,7 +96,7 @@ client.once("clientReady", async () => {
 
   } catch (err) {
 
-    console.error("❌ Slash command error:", err);
+    console.error("❌ Slash command registration failed:", err);
 
   }
 });
@@ -99,14 +119,16 @@ client.on("interactionCreate", async interaction => {
       const msg = interaction.options.getString("message");
 
       await interaction.reply({
-        content: `📨 Sending DM to role: ${role.name}`,
+        content: `📨 Sending DMs to role: ${role.name}`,
         flags: 64
       });
 
       await interaction.guild.members.fetch();
 
       const members = interaction.guild.members.cache.filter(
-        m => m.roles.cache.has(role.id) && !m.user.bot
+        m =>
+          m.roles.cache.has(role.id) &&
+          !m.user.bot
       );
 
       let success = 0;
@@ -116,15 +138,21 @@ client.on("interactionCreate", async interaction => {
 
         try {
 
-          await member.send(
-            `👋 Hello ${member.user.username}\n\n${msg}`
-          );
+          await member.send({
+            content:
+`👋 Hello ${member.user.username},
+
+${msg}
+
+━━━━━━━━━━━━━━━
+🤖 Sent via CID Alert Bot`
+          });
 
           success++;
 
           console.log(`✅ Sent DM to ${member.user.tag}`);
 
-          // Anti rate-limit
+          // Prevent Discord rate-limit
           await delay(2000);
 
         } catch (err) {
@@ -138,7 +166,11 @@ client.on("interactionCreate", async interaction => {
 
       await interaction.followUp({
         content:
-          `✅ Completed\n\n👥 Total: ${members.size}\n✅ Success: ${success}\n❌ Failed: ${failed}`,
+`✅ DM Sending Completed
+
+👥 Total Users: ${members.size}
+✅ Success: ${success}
+❌ Failed: ${failed}`,
         flags: 64
       });
     }
@@ -153,11 +185,25 @@ client.on("interactionCreate", async interaction => {
 // ================= ERROR HANDLING =================
 
 process.on("unhandledRejection", error => {
-  console.error("❌ Unhandled promise rejection:", error);
+  console.error("❌ Unhandled Rejection:", error);
 });
 
 process.on("uncaughtException", error => {
-  console.error("❌ Uncaught exception:", error);
+  console.error("❌ Uncaught Exception:", error);
+});
+
+// ================= GRACEFUL SHUTDOWN =================
+
+process.on("SIGINT", () => {
+  console.log("🛑 Bot shutting down...");
+  client.destroy();
+  process.exit(0);
+});
+
+process.on("SIGTERM", () => {
+  console.log("🛑 Railway stopped the container");
+  client.destroy();
+  process.exit(0);
 });
 
 // ================= LOGIN =================
